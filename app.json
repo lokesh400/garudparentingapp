@@ -1,12 +1,17 @@
 {
   "expo": {
-    "name": "garudclassesparenting",
-    "slug": "garudclassesparenting",
+    "name": "Garud Classes Parents App",
+    "slug": "Garud Classes Parents App",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "garudclassesparenting",
     "userInterfaceStyle": "automatic",
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#ffffff",
+      "translucent": false
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true

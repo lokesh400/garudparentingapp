@@ -1,18 +1,15 @@
-import { Platform, SafeAreaView, StatusBar, View } from "react-native";
+import { View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SafeScreen({ children, style }) {
   return (
-    <View
-      style={{
-        flex: 1,
-        paddingTop:
-          Platform.OS === "android" ? StatusBar.currentHeight : 0,
-        backgroundColor: "#ffffff",
-      }}
+    <SafeAreaView
+      edges={["top", "bottom"]}
+      style={[{ flex: 1, backgroundColor: "#ffffff" }, style]}
     >
-      <SafeAreaView style={[{ flex: 1 }, style]}>
+      <View style={{ flex: 1 }}>
         {children}
-      </SafeAreaView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
