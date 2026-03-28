@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   Text,
   View,
   StyleSheet,
@@ -13,6 +15,7 @@ import { API } from "../../utils/api";
 export default function Dashboard() {
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const loadStudent = async () => {
     try {
@@ -30,6 +33,18 @@ export default function Dashboard() {
     loadStudent();
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await API.post("/auth/logout");
+    } catch (error) {
+      // Continue logout even if backend endpoint is unavailable.
+      console.log("Logout endpoint error:", error?.message || error);
+    } finally {
+      await AsyncStorage.removeItem("userId");
+      router.replace("/login");
+    }
+  };
+
   if (loading) {
     return (
       <SafeScreen style={styles.center}>
@@ -43,7 +58,12 @@ export default function Dashboard() {
     <SafeScreen style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.welcome}>Welcome Parent 👋</Text>
+        <View style={styles.headerTopRow}>
+          <Text style={styles.welcome}>Welcome Parent 👋</Text>
+          <Pressable onPress={handleLogout} style={({ pressed }) => [styles.logoutButton, pressed && styles.logoutButtonPressed]}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>Student Overview</Text>
       </View>
 
@@ -92,9 +112,32 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 20,
   },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
   welcome: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "800",
+    flexShrink: 1,
+  },
+  logoutButton: {
+    backgroundColor: "#EEF4FF",
+    borderColor: "#BFD4FF",
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  logoutButtonPressed: {
+    opacity: 0.8,
+  },
+  logoutText: {
+    color: "#0A4BB8",
+    fontWeight: "700",
+    fontSize: 13,
   },
   subtitle: {
     fontSize: 16,
