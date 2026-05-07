@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -80,10 +81,48 @@ export default function Login() {
       });
 
       if (res.data?.userId) {
-        await AsyncStorage.setItem(
-          "userId",
-          String(res.data.userId)
-        );
+        // Save active userId
+        await AsyncStorage.setItem("userId", String(res.data.userId));
+
+        // Manage local profiles list
+        const raw = await AsyncStorage.getItem("profiles");
+        const profiles = raw ? JSON.parse(raw) : [];
+
+        // If a profile for this username exists, update it; otherwise create new
+        let profile = profiles.find((p) => p.username === username);
+        const profileId = profile ? profile.id : Date.now();
+
+        const newProfile = {
+          id: profileId,
+          displayName: username,
+          username: username,
+          userId: res.data.userId,
+          role: res.data.role || null,
+          savedAt: new Date().toISOString(),
+        };
+
+        if (profile) {
+          const idx = profiles.findIndex((p) => p.id === profile.id);
+          profiles[idx] = newProfile;
+        } else {
+          profiles.push(newProfile);
+        }
+
+        await AsyncStorage.setItem("profiles", JSON.stringify(profiles));
+
+        // Store credentials securely
+        try {
+          await SecureStore.setItemAsync(
+            `profile_${profileId}_credentials`,
+            JSON.stringify({ username, password })
+          );
+        } catch (e) {
+          console.warn("SecureStore failed to save credentials:", e?.message || e);
+        }
+
+        // Set active profile
+        await AsyncStorage.setItem("activeProfileId", String(profileId));
+
         router.replace("/(tabs)/dashboard");
       } else {
         alert("Login failed");
@@ -126,7 +165,7 @@ export default function Login() {
   };
 
   return (
-    <SafeScreen style={styles.screen}>
+    <SafeScreen style={styles.screen} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardArea}

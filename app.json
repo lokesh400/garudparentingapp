@@ -19,7 +19,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#E6F4FE"
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
@@ -35,7 +35,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/icon.png",
-          "imageWidth": 200,
+          "imageWidth": 400,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {

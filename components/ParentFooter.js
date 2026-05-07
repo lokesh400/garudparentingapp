@@ -18,7 +18,7 @@ export default function ParentFooter() {
 
 const styles = StyleSheet.create({
   footer: {
-    height: 48,
+    height: 10,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#F0F0F0",

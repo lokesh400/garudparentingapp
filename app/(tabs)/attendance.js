@@ -1,14 +1,30 @@
-// attendance.js
-import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
-import { MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Picker } from '@react-native-picker/picker';
-import { API } from '../../utils/api';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+} from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import SafeScreen from "../../components/SafeScreen";
+import { Picker } from "@react-native-picker/picker";
+import { API } from "../../utils/api";
 
 const months = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const getCurrentMonthYear = () => {
@@ -19,7 +35,7 @@ const getCurrentMonthYear = () => {
   };
 };
 
-const AttendancePage = () => {
+export default function AttendancePage() {
   const [{ month, year }, setFilter] = useState(getCurrentMonthYear());
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,10 +44,10 @@ const AttendancePage = () => {
     const fetchAttendance = async () => {
       setLoading(true);
       try {
-        // Replace with your actual API endpoint
         const res = await API.get(`/api/attendance?month=${month + 1}&year=${year}`);
-        setAttendance(res.data);
+        setAttendance(res.data || []);
       } catch (err) {
+        console.log("Attendance fetch error:", err);
         setAttendance([]);
       }
       setLoading(false);
@@ -46,7 +62,7 @@ const AttendancePage = () => {
     while (date.getMonth() === month) {
       days.push({
         date: date.toISOString().slice(0, 10),
-        day: date.toLocaleDateString('en-US', { weekday: 'long' }),
+        day: date.toLocaleDateString("en-US", { weekday: "short" }),
         dayNum: date.getDate(),
       });
       date.setDate(date.getDate() + 1);
@@ -54,186 +70,322 @@ const AttendancePage = () => {
     return days;
   };
 
-  // Map attendance by date for quick lookup
+  // Map attendance by date
   const attendanceMap = {};
-  attendance.forEach(att => {
+  attendance.forEach((att) => {
     attendanceMap[att.date] = att;
   });
 
   const daysInMonth = getDaysInMonth(month, year);
 
-  return (
-    <SafeAreaView style={styles.fullContainer}>
-      <View style={styles.headerRow}>
-        <MaterialCommunityIcons name="account-check" size={32} color="#1976d2" style={{ marginRight: 8 }} />
-        <Text style={styles.heading}>Attendance Records</Text>
-        <FontAwesome5 name="file-alt" size={28} color="#43a047" style={{ marginLeft: 8 }} />
-      </View>
-      <View style={styles.filterRow}>
-        <Picker
-          selectedValue={month}
-          style={styles.picker}
-          onValueChange={value => setFilter(f => ({ ...f, month: value }))}
-        >
-          {months.map((m, idx) => (
-            <Picker.Item key={m} label={m} value={idx} />
-          ))}
-        </Picker>
-        <Picker
-          selectedValue={year}
-          style={styles.picker}
-          onValueChange={value => setFilter(f => ({ ...f, year: value }))}
-        >
-          {Array.from({ length: 5 }, (_, i) => year - i).map(y => (
-            <Picker.Item key={y} label={y.toString()} value={y} />
-          ))}
-        </Picker>
-      </View>
-      <View style={styles.tableWrapper}>
-        {loading ? (
-          <ActivityIndicator size="large" color="#1976d2" style={{ marginTop: 20 }} />
-        ) : (
-          <View style={[styles.tableContainer, { width: '100%', flex: 1 }]}> 
-            <View style={styles.tableHeader}>
-              <Text style={styles.tableHeaderCell}>Date</Text>
-              <Text style={styles.tableHeaderCell}>Day</Text>
-              <Text style={styles.tableHeaderCell}>Status</Text>
-              <Text style={styles.tableHeaderCell}>Marked Time</Text>
+  // Statistics
+  const presentDays = attendance.length;
+  const totalDays = daysInMonth.length;
+  const percentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
+  const AttendanceCard = ({ item, att }) => {
+    const isPresent = !!att;
+    const punchIn = att?.check_in_time || att?.punchIn || "-";
+    const punchOut = att?.check_out_time || att?.punchOut || "-";
+
+    return (
+      <View style={[styles.card, isPresent ? styles.cardPresent : styles.cardAbsent]}>
+        <View style={styles.cardHeader}>
+          <View style={styles.dateSection}>
+            <Text style={styles.dayNum}>{item.dayNum}</Text>
+            <Text style={styles.dayName}>{item.day}</Text>
+          </View>
+
+          <View style={styles.statusBadge}>
+            {isPresent ? (
+              <>
+                <MaterialCommunityIcons name="check-circle" size={24} color="#10b981" />
+                <Text style={styles.statusBadgeText}>Present</Text>
+              </>
+            ) : (
+              <>
+                <MaterialCommunityIcons name="close-circle" size={24} color="#ef4444" />
+                <Text style={styles.statusBadgeAbsent}>Absent</Text>
+              </>
+            )}
+          </View>
+        </View>
+
+        {isPresent && (
+          <View style={styles.timeSection}>
+            <View style={styles.timeItem}>
+              <View style={[styles.timeIcon, styles.punchInIcon]}>
+                <MaterialCommunityIcons name="login" size={18} color="#10b981" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.timeLabel}>Punch In</Text>
+                <Text style={styles.timeValue}>{punchIn}</Text>
+              </View>
             </View>
-            <ScrollView style={styles.verticalScroll} contentContainerStyle={{ paddingBottom: 60 }}>
-              {daysInMonth.map(item => {
-                const att = attendanceMap[item.date];
-                const status = att ? 'Present' : 'Not Marked';
-                const markedTime = att ? att.check_in_time : '-';
-                return (
-                  <View style={[styles.tableRow, att ? styles.presentRow : styles.absentRow]} key={item.date}>
-                    <Text style={styles.tableCell}>{item.dayNum}</Text>
-                    <Text style={styles.tableCell}>{item.day}</Text>
-                    <View style={styles.iconCell}>
-                      {att ? (
-                        <MaterialCommunityIcons name="check-circle" size={22} color="#43a047" />
-                      ) : (
-                        <MaterialCommunityIcons name="close-circle" size={22} color="#e53935" />
-                      )}
-                      <Text style={[styles.statusText, { color: att ? '#43a047' : '#e53935' }]}>{status}</Text>
-                    </View>
-                    <Text style={styles.tableCell}>{markedTime}</Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
+
+            <View style={styles.divider} />
+
+            <View style={styles.timeItem}>
+              <View style={[styles.timeIcon, styles.punchOutIcon]}>
+                <MaterialCommunityIcons name="logout" size={18} color="#6366f1" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.timeLabel}>Punch Out</Text>
+                <Text style={styles.timeValue}>{punchOut}</Text>
+              </View>
+            </View>
           </View>
         )}
       </View>
-    </SafeAreaView>
+    );
+  };
+
+  return (
+    <SafeScreen style={styles.screen}>
+      <View style={styles.container}>
+        {/* Stats Section */}
+        <View style={styles.statsSection}>
+          <View style={styles.statCard}>
+            <MaterialCommunityIcons name="calendar-check" size={28} color="#10b981" />
+            <Text style={styles.statValue}>{presentDays}</Text>
+            <Text style={styles.statLabel}>Present</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <MaterialCommunityIcons name="percent" size={28} color="#6366f1" />
+            <Text style={styles.statValue}>{percentage}%</Text>
+            <Text style={styles.statLabel}>Attendance</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <MaterialCommunityIcons name="calendar-range" size={28} color="#f59e0b" />
+            <Text style={styles.statValue}>{totalDays}</Text>
+            <Text style={styles.statLabel}>Total Days</Text>
+          </View>
+        </View>
+
+        {/* Filter Section */}
+        <View style={styles.filterSection}>
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={month}
+              style={styles.picker}
+              onValueChange={(value) => setFilter((f) => ({ ...f, month: value }))}
+            >
+              {months.map((m, idx) => (
+                <Picker.Item key={m} label={m} value={idx} />
+              ))}
+            </Picker>
+          </View>
+
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={year}
+              style={styles.picker}
+              onValueChange={(value) => setFilter((f) => ({ ...f, year: value }))}
+            >
+              {Array.from({ length: 5 }, (_, i) => year - i).map((y) => (
+                <Picker.Item key={y} label={y.toString()} value={y} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
+        {/* Attendance List */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#6366f1" />
+            <Text style={styles.loadingText}>Loading attendance records...</Text>
+          </View>
+        ) : daysInMonth.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="calendar-blank" size={48} color="#cbd5e1" />
+            <Text style={styles.emptyText}>No data available</Text>
+          </View>
+        ) : (
+          <ScrollView style={styles.listContainer}>
+            {daysInMonth.map((item) => (
+              <AttendanceCard
+                key={item.date}
+                item={item}
+                att={attendanceMap[item.date]}
+              />
+            ))}
+            <View style={{ height: 20 }} />
+          </ScrollView>
+        )}
+      </View>
+    </SafeScreen>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  fullContainer: {
-    flex: 1,
-    padding: 0,
-    backgroundColor: '#fff',
-  },
-  tableWrapper: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 0,
-    paddingTop: 0,
-    justifyContent: 'center',
-    height: '100%',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-    marginTop: 10,
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1976d2',
-    textAlign: 'center',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  screen: { backgroundColor: "#ffffff" },
+  container: { flex: 1, padding: 16 },
+  statsSection: {
+    flexDirection: "row",
+    gap: 10,
     marginBottom: 20,
   },
-  picker: {
+  statCard: {
     flex: 1,
-    height: 50,
-    marginHorizontal: 5,
-  },
-  tableContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#1976d2',
+    borderColor: "#e5e7eb",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1f2937",
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: "#64748b",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  filterSection: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 18,
+  },
+  pickerWrapper: {
+    flex: 1,
+    backgroundColor: "#fff",
     borderRadius: 12,
-    height: '100%',
-    overflow: 'hidden',
-    backgroundColor: '#f5faff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-    flex: 1,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
   },
-  horizontalScroll: {
-    display: 'none',
+  picker: {
+    height: 48,
   },
-  verticalScroll: {
-    height: '100%',
+  listContainer: { flex: 1 },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderLeftWidth: 4,
+    overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
   },
-  tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#1976d2',
-    paddingVertical: 10,
+  cardPresent: {
+    borderColor: "#d1fae5",
+    borderLeftColor: "#10b981",
   },
-  tableHeaderCell: {
-    flex: 1,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#fff',
-    fontSize: 16,
+  cardAbsent: {
+    borderColor: "#fee2e2",
+    borderLeftColor: "#ef4444",
   },
-  tableRow: {
-    flexDirection: 'row',
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e3e3e3',
-    paddingVertical: 10,
-    alignItems: 'center',
+    borderBottomColor: "#f0f0f0",
   },
-  presentRow: {
-    backgroundColor: '#e8f5e9',
+  dateSection: {
+    alignItems: "center",
   },
-  absentRow: {
-    backgroundColor: '#ffebee',
+  dayNum: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#1f2937",
   },
-  tableCell: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 15,
-    color: '#333',
+  dayName: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 2,
+    fontWeight: "600",
   },
-  iconCell: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
+    backgroundColor: "#f0fdf4",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
-  statusText: {
-    marginLeft: 6,
-    fontWeight: 'bold',
-    fontSize: 15,
+  statusBadgeAbsent: {
+    color: "#ef4444",
+    fontWeight: "700",
+    fontSize: 12,
   },
-  noRecords: {
-    textAlign: 'center',
-    marginTop: 30,
-    color: '#888',
+  statusBadgeText: {
+    color: "#10b981",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  timeSection: { padding: 14 },
+  timeItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  timeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  punchInIcon: { backgroundColor: "#ecfdf5" },
+  punchOutIcon: { backgroundColor: "#eef2ff" },
+  timeLabel: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "600",
+  },
+  timeValue: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1f2937",
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#f0f0f0",
+    marginVertical: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    color: "#64748b",
+    fontWeight: "500",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyText: {
+    marginTop: 12,
+    color: "#9ca3af",
+    fontWeight: "600",
   },
 });
-
-export default AttendancePage;
