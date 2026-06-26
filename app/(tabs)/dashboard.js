@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,12 +9,14 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from "react-native";
 import SafeScreen from "../../components/SafeScreen";
 import { API } from "../../utils/api";
 
 export default function Dashboard() {
   const [student, setStudent] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -23,6 +25,15 @@ export default function Dashboard() {
       const userId = await AsyncStorage.getItem("userId");
       const res = await API.post(`/me/${userId}`);
       setStudent(res.data);
+
+      try {
+        const docRes = await API.get(`/api/mobile/documents/${userId}`);
+        if (docRes.data?.success) {
+          setPhotoUrl(docRes.data.studentPhoto);
+        }
+      } catch (err) {
+        console.log("Error fetching profile photo status on dashboard:", err);
+      }
     } catch (error) {
       console.log("Error fetching dashboard data:", error);
     } finally {
@@ -30,9 +41,11 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    loadStudent();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadStudent();
+    }, [])
+  );
 
   const handleLogout = async () => {
     try {
@@ -88,7 +101,11 @@ export default function Dashboard() {
         <View style={styles.studentCard}>
           <View style={styles.studentRow}>
             <View style={styles.avatar}>
-              <Ionicons name="person" size={28} color="#6366f1" />
+              {photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+              ) : (
+                <Ionicons name="person" size={28} color="#6366f1" />
+              )}
             </View>
             <View style={styles.studentInfo}>
               <Text style={styles.name}>{student.name || "Student"}</Text>
@@ -113,6 +130,27 @@ export default function Dashboard() {
             </View>
           </View>
         </View>
+
+        <Pressable
+          onPress={() => router.push("/document-center")}
+          style={({ pressed }) => [
+            styles.documentCard,
+            pressed && styles.documentCardPressed,
+          ]}
+        >
+          <View style={styles.documentCardContent}>
+            <View style={styles.documentIconWrap}>
+              <Ionicons name="document-text" size={24} color="#6366f1" />
+            </View>
+            <View style={styles.documentInfo}>
+              <Text style={styles.documentTitle}>Document Center</Text>
+              <Text style={styles.documentSubtitle}>
+                Upload marksheets, Aadhaar card & profile photo
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#6366f1" />
+          </View>
+        </Pressable>
 
         <View style={styles.detailsCard}>
           <Text style={styles.sectionTitle}>Family Details</Text>
@@ -311,5 +349,54 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#1f2937",
     fontWeight: "600",
+  },
+  documentCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    marginBottom: 16,
+  },
+  documentCardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
+  },
+  documentCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  documentIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#eef2ff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  documentInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  documentTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1f2937",
+  },
+  documentSubtitle: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 4,
+    fontWeight: "500",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 14,
   },
 });
