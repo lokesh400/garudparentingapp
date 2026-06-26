@@ -36,8 +36,6 @@ export default function DocumentCenter() {
   const [uploading, setUploading] = useState(false);
   const [documents, setDocuments] = useState({});
   const [studentPhoto, setStudentPhoto] = useState(null);
-  const [allowPhotoReupload, setAllowPhotoReupload] = useState(false);
-  const [allowDocumentReupload, setAllowDocumentReupload] = useState(false);
   
   // Custom Action Sheet Modal
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
@@ -82,8 +80,6 @@ export default function DocumentCenter() {
       if (docRes.data?.success) {
         setDocuments(docRes.data.documents || {});
         setStudentPhoto(docRes.data.studentPhoto || null);
-        setAllowPhotoReupload(docRes.data.allowPhotoReupload || false);
-        setAllowDocumentReupload(docRes.data.allowDocumentReupload || false);
       } else {
         console.log("Failed to fetch documents status:", docRes.data?.message);
       }
@@ -170,8 +166,6 @@ export default function DocumentCenter() {
         if (res.data.studentPhoto) {
           setStudentPhoto(res.data.studentPhoto);
         }
-        setAllowPhotoReupload(res.data.allowPhotoReupload || false);
-        setAllowDocumentReupload(res.data.allowDocumentReupload || false);
         
         const friendlyName = documentName === "studentPhoto" 
           ? "Profile photo" 
@@ -326,14 +320,8 @@ export default function DocumentCenter() {
           
           <View style={styles.avatarContainer}>
             <Pressable 
-              onPress={() => {
-                if (studentPhoto && !allowPhotoReupload) {
-                  Alert.alert("Locked", "Profile photo re-upload is locked. Please contact admin to enable re-upload.");
-                  return;
-                }
-                openPickerOptions("studentPhoto");
-              }}
-              style={({ pressed }) => [styles.avatarPressable, pressed && (studentPhoto && !allowPhotoReupload ? {} : styles.avatarPressed)]}
+              onPress={() => openPickerOptions("studentPhoto")}
+              style={({ pressed }) => [styles.avatarPressable, pressed && styles.avatarPressed]}
             >
               <View style={styles.avatarWrapper}>
                 {studentPhoto ? (
@@ -343,33 +331,20 @@ export default function DocumentCenter() {
                     <Ionicons name="person" size={54} color="#a5b4fc" />
                   </View>
                 )}
-                {(!studentPhoto || allowPhotoReupload) && (
-                  <View style={styles.cameraBadge}>
-                    <Ionicons name="camera" size={16} color="#fff" />
-                  </View>
-                )}
+                <View style={styles.cameraBadge}>
+                  <Ionicons name="camera" size={16} color="#fff" />
+                </View>
               </View>
             </Pressable>
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-              {studentPhoto && (
-                <Pressable
-                  onPress={() => handlePreview(studentPhoto, "Profile Photo")}
-                  style={({ pressed }) => [styles.viewPhotoBtn, pressed && styles.btnPressed, { marginTop: 0 }]}
-                >
-                  <Ionicons name="eye" size={14} color="#6366f1" />
-                  <Text style={styles.viewPhotoText}>View Large</Text>
-                </Pressable>
-              )}
-              {studentPhoto && allowPhotoReupload && (
-                <Pressable
-                  onPress={() => openPickerOptions("studentPhoto")}
-                  style={({ pressed }) => [styles.replacePhotoBtn, pressed && styles.btnPressed]}
-                >
-                  <Ionicons name="cloud-upload-outline" size={14} color="#475569" />
-                  <Text style={styles.replacePhotoText}>Replace</Text>
-                </Pressable>
-              )}
-            </View>
+            {studentPhoto && (
+              <Pressable
+                onPress={() => handlePreview(studentPhoto, "Profile Photo")}
+                style={({ pressed }) => [styles.viewPhotoBtn, pressed && styles.btnPressed]}
+              >
+                <Ionicons name="eye" size={14} color="#6366f1" />
+                <Text style={styles.viewPhotoText}>View Large</Text>
+              </Pressable>
+            )}
           </View>
         </View>
 
@@ -420,15 +395,13 @@ export default function DocumentCenter() {
                         <Ionicons name="eye-outline" size={16} color="#6366f1" />
                         <Text style={styles.actionBtnOutlineText}>Preview</Text>
                       </Pressable>
-                      {allowDocumentReupload && (
-                        <Pressable
-                           onPress={() => openPickerOptions(doc.key)}
-                           style={({ pressed }) => [styles.actionButtonOutline, pressed && styles.btnPressed]}
-                        >
-                          <Ionicons name="cloud-upload-outline" size={16} color="#475569" />
-                          <Text style={styles.actionBtnOutlineTextSecondary}>Replace</Text>
-                        </Pressable>
-                      )}
+                      <Pressable
+                        onPress={() => openPickerOptions(doc.key)}
+                        style={({ pressed }) => [styles.actionButtonOutline, pressed && styles.btnPressed]}
+                      >
+                        <Ionicons name="cloud-upload-outline" size={16} color="#475569" />
+                        <Text style={styles.actionBtnOutlineTextSecondary}>Replace</Text>
+                      </Pressable>
                     </>
                   ) : (
                     <Pressable
@@ -725,22 +698,6 @@ const styles = StyleSheet.create({
   viewPhotoText: {
     fontSize: 12,
     color: "#6366f1",
-    fontWeight: "700",
-    marginLeft: 6,
-  },
-  replacePhotoBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: "#f1f5f9",
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-  },
-  replacePhotoText: {
-    fontSize: 12,
-    color: "#475569",
     fontWeight: "700",
     marginLeft: 6,
   },
