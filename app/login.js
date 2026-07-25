@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,7 +12,9 @@ import {
   Text,
   TextInput,
   View,
+  Animated,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import SafeScreen from "../components/SafeScreen";
 import { API } from "../utils/api";
 
@@ -25,7 +27,31 @@ export default function Login() {
   const [resetUsername, setResetUsername] = useState("");
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [resetSentTo, setResetSentTo] = useState("");
+
+  const [isUserFocused, setIsUserFocused] = useState(false);
+  const [isPassFocused, setIsPassFocused] = useState(false);
+  const [isResetUserFocused, setIsResetUserFocused] = useState(false);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
   const router = useRouter();
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const resolveSentEmail = (responseData, fallbackValue) => {
     return (
@@ -166,97 +192,172 @@ export default function Login() {
 
   return (
     <SafeScreen style={styles.screen} edges={["top", "bottom"]}>
+      {/* Decorative background shapes for modern glassmorphism aesthetic */}
+      <View style={styles.bgShape1} />
+      <View style={styles.bgShape2} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardArea}
       >
         <View style={styles.container}>
-          <View style={styles.headerWrap}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Login to continue to your parent dashboard.</Text>
-          </View>
-
-          <View style={styles.card}>
-            <View style={styles.fieldWrap}>
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                placeholder="Enter username"
-                placeholderTextColor="#8A94A6"
-                autoCapitalize="none"
-                value={username}
-                onChangeText={setUsername}
-                style={styles.input}
-                editable={!isLoggingIn}
-              />
+          <Animated.View
+            style={[
+              styles.animatedWrapper,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.headerWrap}>
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>Login to continue to your parent dashboard.</Text>
             </View>
 
-            <View style={styles.fieldWrap}>
-              <View style={styles.passwordLabelRow}>
-                <Text style={styles.label}>Password</Text>
-                <Pressable
-                  disabled={isLoggingIn}
-                  onPress={() => setShowPassword((prev) => !prev)}
-                  style={({ pressed }) => [styles.togglePasswordButton, pressed && styles.togglePasswordButtonPressed]}
+            <View style={styles.card}>
+              {/* Username Field */}
+              <View style={styles.fieldWrap}>
+                <Text style={styles.label}>Username</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    isUserFocused && styles.inputContainerFocused,
+                  ]}
                 >
-                  <Text style={styles.togglePasswordText}>{showPassword ? "Hide" : "Show"}</Text>
+                  <MaterialCommunityIcons
+                    name="account-outline"
+                    size={22}
+                    color={isUserFocused ? "#6D28D9" : "#64748B"}
+                    style={styles.leadingIcon}
+                  />
+                  <TextInput
+                    placeholder="Enter username"
+                    placeholderTextColor="#94A3B8"
+                    autoCapitalize="none"
+                    value={username}
+                    onChangeText={setUsername}
+                    style={styles.input}
+                    editable={!isLoggingIn}
+                    onFocus={() => setIsUserFocused(true)}
+                    onBlur={() => setIsUserFocused(false)}
+                  />
+                </View>
+              </View>
+
+              {/* Password Field */}
+              <View style={styles.fieldWrap}>
+                <Text style={styles.label}>Password</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    isPassFocused && styles.inputContainerFocused,
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="lock-outline"
+                    size={22}
+                    color={isPassFocused ? "#6D28D9" : "#64748B"}
+                    style={styles.leadingIcon}
+                  />
+                  <TextInput
+                    placeholder="Enter password"
+                    placeholderTextColor="#94A3B8"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    style={styles.input}
+                    editable={!isLoggingIn}
+                    onFocus={() => setIsPassFocused(true)}
+                    onBlur={() => setIsPassFocused(false)}
+                  />
+                  <Pressable
+                    disabled={isLoggingIn}
+                    onPress={() => setShowPassword((prev) => !prev)}
+                    style={({ pressed }) => [
+                      styles.togglePasswordButton,
+                      pressed && styles.togglePasswordButtonPressed,
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color="#64748B"
+                    />
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Login Button */}
+              <Pressable
+                onPress={handleLogin}
+                style={({ pressed }) => [
+                  styles.button,
+                  (!username || !password || isLoggingIn) && styles.buttonDisabled,
+                  pressed && styles.buttonPressed,
+                ]}
+                disabled={!username || !password || isLoggingIn}
+              >
+                <Text style={styles.buttonText}>Login</Text>
+              </Pressable>
+
+              {/* Forgot Password Trigger */}
+              <View style={styles.resetSection}>
+                <Pressable
+                  onPress={openResetModal}
+                  disabled={isLoggingIn}
+                  style={({ pressed }) => [
+                    styles.resetToggleButton,
+                    pressed && styles.togglePasswordButtonPressed,
+                  ]}
+                >
+                  <Text style={styles.resetToggleText}>Forgot password?</Text>
                 </Pressable>
               </View>
-              <TextInput
-                placeholder="Enter password"
-                placeholderTextColor="#8A94A6"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-                style={styles.input}
-                editable={!isLoggingIn}
-              />
             </View>
-
-            <Pressable
-              onPress={handleLogin}
-              style={({ pressed }) => [
-                styles.button,
-                (!username || !password || isLoggingIn) && styles.buttonDisabled,
-                pressed && styles.buttonPressed,
-              ]}
-              disabled={!username || !password || isLoggingIn}
-            >
-              <Text style={styles.buttonText}>Login</Text>
-            </Pressable>
-
-            <View style={styles.resetSection}>
-              <Pressable
-                onPress={openResetModal}
-                disabled={isLoggingIn}
-                style={({ pressed }) => [styles.resetToggleButton, pressed && styles.togglePasswordButtonPressed]}
-              >
-                <Text style={styles.resetToggleText}>Forgot password?</Text>
-              </Pressable>
-            </View>
-          </View>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
 
+      {/* Forgot Password Modal */}
       <Modal
-        animationType="fade"
+        animationType="slide"
         transparent
         visible={showResetModal}
         onRequestClose={closeResetModal}
       >
         <View style={styles.modalBackdrop}>
+          <Pressable style={styles.modalDismiss} onPress={closeResetModal} />
           <View style={styles.modalCard}>
+            <View style={styles.modalHeaderIndicator} />
             <Text style={styles.modalTitle}>Reset Password</Text>
             <Text style={styles.resetSubtitle}>Enter your username to receive a reset token mail.</Text>
 
-            <TextInput
-              placeholder="Enter username"
-              placeholderTextColor="#8A94A6"
-              autoCapitalize="none"
-              value={resetUsername}
-              onChangeText={setResetUsername}
-              editable={!isSendingReset && !isLoggingIn}
-              style={styles.input}
-            />
+            <View
+              style={[
+                styles.inputContainer,
+                isResetUserFocused && styles.inputContainerFocused,
+                { marginBottom: 16 },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="account-outline"
+                size={22}
+                color={isResetUserFocused ? "#6D28D9" : "#64748B"}
+                style={styles.leadingIcon}
+              />
+              <TextInput
+                placeholder="Enter username"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+                value={resetUsername}
+                onChangeText={setResetUsername}
+                editable={!isSendingReset && !isLoggingIn}
+                style={styles.input}
+                onFocus={() => setIsResetUserFocused(true)}
+                onBlur={() => setIsResetUserFocused(false)}
+              />
+            </View>
 
             <Pressable
               onPress={handleForgotPassword}
@@ -268,29 +369,36 @@ export default function Login() {
               disabled={!resetUsername.trim() || isSendingReset || isLoggingIn}
             >
               <Text style={styles.secondaryButtonText}>
-                {isSendingReset ? "Sending reset mail..." : "Send Reset Password Mail"}
+                {isSendingReset ? "Sending reset mail..." : "Send Reset Mail"}
               </Text>
             </Pressable>
 
             {!!resetSentTo && (
-              <Text style={styles.resetSentInfo}>Reset password mail sent to: {resetSentTo}</Text>
+              <View style={styles.successMessageCard}>
+                <MaterialCommunityIcons name="check-circle" size={16} color="#16A34A" />
+                <Text style={styles.resetSentInfo}>Mail sent to: {resetSentTo}</Text>
+              </View>
             )}
 
             <Pressable
               onPress={closeResetModal}
               disabled={isSendingReset}
-              style={({ pressed }) => [styles.modalCloseButton, pressed && styles.togglePasswordButtonPressed]}
+              style={({ pressed }) => [
+                styles.modalCloseButton,
+                pressed && styles.togglePasswordButtonPressed,
+              ]}
             >
-              <Text style={styles.modalCloseText}>Close</Text>
+              <Text style={styles.modalCloseText}>Cancel</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
 
+      {/* Loading Overlay */}
       {isLoggingIn && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingCard}>
-            <ActivityIndicator size="large" color="#1F6FEB" />
+            <ActivityIndicator size="large" color="#6D28D9" />
             <Text style={styles.loadingText}>Logging in, please wait...</Text>
           </View>
         </View>
@@ -301,7 +409,28 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   screen: {
-    backgroundColor: "#F4F7FC",
+    backgroundColor: "#F8F7FC",
+    position: "relative",
+  },
+  bgShape1: {
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: "#8B5CF6",
+    opacity: 0.08,
+    position: "absolute",
+    top: -120,
+    left: -100,
+  },
+  bgShape2: {
+    width: 400,
+    height: 400,
+    borderRadius: 200,
+    backgroundColor: "#A855F7",
+    opacity: 0.06,
+    position: "absolute",
+    bottom: -150,
+    right: -100,
   },
   keyboardArea: {
     flex: 1,
@@ -309,84 +438,97 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 22,
-    paddingVertical: 20,
+    paddingHorizontal: 24,
+  },
+  animatedWrapper: {
+    width: "100%",
   },
   headerWrap: {
-    marginBottom: 22,
+    marginBottom: 32,
+    alignItems: "center",
   },
   title: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: "800",
-    color: "#16213E",
+    color: "#171717",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: "#5E6A82",
+    color: "#64748B",
     lineHeight: 20,
+    textAlign: "center",
   },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 18,
+    borderRadius: 24,
+    padding: 24,
     borderWidth: 1,
-    borderColor: "#E4EAF5",
-    shadowColor: "#13213D",
-    shadowOpacity: 0.08,
+    borderColor: "#E8E5EF",
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.05,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
   fieldWrap: {
-    marginBottom: 14,
+    marginBottom: 20,
   },
   label: {
-    marginBottom: 7,
+    marginBottom: 8,
     fontSize: 13,
     fontWeight: "700",
-    color: "#2B3A55",
+    color: "#171717",
   },
-  passwordLabelRow: {
+  inputContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
+    borderRadius: 16,
+    backgroundColor: "#F8F7FC",
+    height: 56,
+    paddingHorizontal: 16,
   },
-  togglePasswordButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginBottom: 6,
+  inputContainerFocused: {
+    borderColor: "#6D28D9",
+    borderWidth: 1.5,
+    backgroundColor: "#FFFFFF",
   },
-  togglePasswordButtonPressed: {
-    opacity: 0.7,
-  },
-  togglePasswordText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#1F6FEB",
+  leadingIcon: {
+    marginRight: 12,
   },
   input: {
-    borderWidth: 1,
-    borderColor: "#D5DDEC",
-    borderRadius: 12,
-    backgroundColor: "#F9FBFF",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    flex: 1,
     fontSize: 15,
-    color: "#1A2233",
+    color: "#171717",
+    height: "100%",
+  },
+  togglePasswordButton: {
+    padding: 4,
+  },
+  togglePasswordButtonPressed: {
+    opacity: 0.6,
   },
   button: {
-    marginTop: 8,
-    borderRadius: 12,
-    backgroundColor: "#1F6FEB",
-    paddingVertical: 14,
+    marginTop: 12,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#6D28D9",
     alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   buttonDisabled: {
     opacity: 0.55,
   },
   buttonPressed: {
-    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
+    opacity: 0.95,
   },
   buttonText: {
     color: "#FFFFFF",
@@ -394,98 +536,130 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   secondaryButton: {
-    marginTop: 10,
-    borderRadius: 12,
-    backgroundColor: "#EAF2FF",
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#F8F7FC",
     borderWidth: 1,
-    borderColor: "#C7D9FF",
-    paddingVertical: 12,
+    borderColor: "#E8E5EF",
     alignItems: "center",
+    justifyContent: "center",
   },
   secondaryButtonText: {
-    color: "#1347A8",
-    fontSize: 14,
+    color: "#6D28D9",
+    fontSize: 15,
     fontWeight: "700",
   },
   resetSection: {
-    marginTop: 18,
-    paddingTop: 14,
+    marginTop: 24,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#E8EEF9",
+    borderTopColor: "#E8E5EF",
+    alignItems: "center",
   },
   resetToggleButton: {
-    alignSelf: "flex-start",
-    paddingVertical: 2,
+    paddingVertical: 4,
   },
   resetToggleText: {
     fontSize: 14,
-    color: "#1F6FEB",
+    color: "#6D28D9",
     fontWeight: "700",
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 22,
+    backgroundColor: "rgba(23, 23, 23, 0.4)",
+    justifyContent: "flex-end",
+  },
+  modalDismiss: {
+    ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
-    width: "100%",
-    maxWidth: 380,
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E4EAF5",
-    padding: 18,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 10,
+  },
+  modalHeaderIndicator: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E8E5EF",
+    alignSelf: "center",
+    marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "800",
-    color: "#16213E",
-    marginBottom: 2,
+    color: "#171717",
+    marginBottom: 4,
   },
   resetSubtitle: {
-    fontSize: 12,
-    color: "#5E6A82",
-    marginBottom: 10,
+    fontSize: 13,
+    color: "#64748B",
+    marginBottom: 20,
+  },
+  successMessageCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ECFDF5",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
   },
   resetSentInfo: {
-    marginTop: 10,
-    fontSize: 12,
-    color: "#0C8F3F",
+    marginLeft: 8,
+    fontSize: 13,
+    color: "#16A34A",
     fontWeight: "600",
   },
   modalCloseButton: {
-    marginTop: 14,
-    alignSelf: "flex-end",
-    paddingHorizontal: 6,
-    paddingVertical: 4,
+    marginTop: 16,
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8F7FC",
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
   },
   modalCloseText: {
-    fontSize: 13,
-    color: "#334155",
+    fontSize: 15,
+    color: "#64748B",
     fontWeight: "700",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15, 23, 42, 0.35)",
+    backgroundColor: "rgba(248, 247, 252, 0.7)",
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 100,
   },
   loadingCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingHorizontal: 22,
-    paddingVertical: 18,
+    borderRadius: 24,
+    paddingHorizontal: 28,
+    paddingVertical: 24,
     alignItems: "center",
-    minWidth: 220,
+    minWidth: 240,
     borderWidth: 1,
-    borderColor: "#E4EAF5",
+    borderColor: "#E8E5EF",
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 14,
-    color: "#2B3A55",
+    color: "#171717",
     fontWeight: "600",
   },
 });

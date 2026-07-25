@@ -1,14 +1,20 @@
 import axios from "axios";
 
+// export const API = axios.create({
+//   baseURL: "https://garudclasseserp.onrender.com",
+//   withCredentials: true,
+// });
+
 export const API = axios.create({
-  baseURL: "https://garudclasseserp.onrender.com",
+  baseURL: "https://p.garudclasses.com",
   withCredentials: true,
 });
 
 // export const API = axios.create({
-//   baseURL: "http://172.27.32.198:4000",
+//   baseURL: "http://192.168.31.30:4000",
 //   withCredentials: true,
 // });
+
 
 
 

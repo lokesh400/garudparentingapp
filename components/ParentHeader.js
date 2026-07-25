@@ -36,7 +36,7 @@ export default function ParentHeader() {
             pressed && styles.profileButtonPressed,
           ]}
         >
-          <MaterialCommunityIcons name="account-multiple" size={20} color="#6366f1" />
+          <MaterialCommunityIcons name="account-multiple" size={20} color="#6D28D9" />
         </Pressable>
       </View>
     </View>
@@ -47,48 +47,52 @@ const styles = StyleSheet.create({
   headerWrapper: {
     backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    borderBottomColor: "#E8E5EF",
+    elevation: 2,
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
   header: {
-    paddingHorizontal: 10,
-    paddingBottom: 5,
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+    paddingTop: 4,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: "#ffffff",
   },
   leftLogoWrap: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     alignItems: "center",
     justifyContent: "center",
   },
   leftLogo: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
   },
   tabName: {
     flex: 1,
     textAlign: "center",
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "800",
-    color: "#1f2937",
+    color: "#171717",
     letterSpacing: 0.3,
   },
   profileButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: 10,
-    backgroundColor: "#eef2ff",
+    backgroundColor: "#F8F7FC",
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
     justifyContent: "center",
     alignItems: "center",
   },
   profileButtonPressed: {
     opacity: 0.7,
+    transform: [{ scale: 0.96 }],
   },
 });

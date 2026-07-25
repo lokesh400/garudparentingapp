@@ -1,15 +1,41 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  Animated,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import SafeScreen from "../../components/SafeScreen";
 import { API } from "../../utils/api";
+
+// Reusable card animation wrapper for staggered waterfall entrance
+function FadeInCard({ children, delay = 0, style }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 400,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
+
+  return (
+    <Animated.View style={[{ opacity: anim, transform: [{ translateY }] }, style]}>
+      {children}
+    </Animated.View>
+  );
+}
 
 export default function TimetableScreen() {
   const [userId, setUserId] = useState(null);
@@ -56,8 +82,10 @@ export default function TimetableScreen() {
   if (loading) {
     return (
       <SafeScreen style={styles.center}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.loadingText}>Loading timetable...</Text>
+        <View style={styles.loadingCard}>
+          <ActivityIndicator size="large" color="#6D28D9" />
+          <Text style={styles.loadingText}>Loading Timetable...</Text>
+        </View>
       </SafeScreen>
     );
   }
@@ -65,61 +93,80 @@ export default function TimetableScreen() {
   if (!timetable || !days.length) {
     return (
       <SafeScreen style={styles.center}>
-        <MaterialCommunityIcons name="calendar-blank" size={48} color="#cbd5e1" />
-        <Text style={styles.emptyText}>No timetable found</Text>
+        <View style={styles.emptyCard}>
+          <MaterialCommunityIcons name="calendar-remove" size={48} color="#A855F7" />
+          <Text style={styles.emptyText}>No Timetable Found</Text>
+          <Text style={styles.emptySubtext}>Timetable schedule has not been uploaded yet.</Text>
+        </View>
       </SafeScreen>
     );
   }
 
   return (
     <SafeScreen style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.heroCard}>
-          <View style={styles.heroHeader}>
-            <View style={styles.heroIcon}>
-              <MaterialCommunityIcons name="calendar-clock" size={24} color="#6366f1" />
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Weekly Timetable Summary Card */}
+        <FadeInCard delay={0}>
+          <View style={styles.heroCard}>
+            <View style={styles.heroHeader}>
+              <View style={styles.heroIcon}>
+                <MaterialCommunityIcons name="clock-time-four" size={24} color="#6D28D9" />
+              </View>
+              <View>
+                <Text style={styles.heroTitle}>Weekly Timetable</Text>
+                <Text style={styles.heroSubtitle}>Plan for the week ahead</Text>
+              </View>
             </View>
-            <View>
-              <Text style={styles.heroTitle}>Weekly Timetable</Text>
-              <Text style={styles.heroSubtitle}>Plan for the week</Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{days.length}</Text>
+                <Text style={styles.statLabel}>Days</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{totalPeriods}</Text>
+                <Text style={styles.statLabel}>Periods</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{subjectCount}</Text>
+                <Text style={styles.statLabel}>Subjects</Text>
+              </View>
             </View>
           </View>
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{days.length}</Text>
-              <Text style={styles.statLabel}>Days</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{totalPeriods}</Text>
-              <Text style={styles.statLabel}>Periods</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{subjectCount}</Text>
-              <Text style={styles.statLabel}>Subjects</Text>
-            </View>
-          </View>
-        </View>
+        </FadeInCard>
 
+        {/* Schedule List with staggered fade in */}
         {days.map((day, index) => (
-          <View key={`${day.day}-${index}`} style={styles.dayCard}>
-            <View style={styles.dayHeader}>
-              <Text style={styles.dayTitle}>{day.day}</Text>
-              <Text style={styles.dayCount}>{day.periods?.length || 0} periods</Text>
-            </View>
-
-            {(day.periods || []).map((p, i) => (
-              <View key={`${p.subject}-${i}`} style={styles.periodCard}>
-                <View style={styles.periodLeft}>
-                  <Text style={styles.periodSubject}>{p.subject}</Text>
-                  <Text style={styles.periodTeacher}>{p.teacher || "Teacher"}</Text>
-                </View>
-                <View style={styles.timeBadge}>
-                  <MaterialCommunityIcons name="clock-outline" size={14} color="#6366f1" />
-                  <Text style={styles.timeText}>{p.startTime} - {p.endTime}</Text>
+          <FadeInCard key={`${day.day}-${index}`} delay={100 + index * 80}>
+            <View style={styles.dayCard}>
+              <View style={styles.dayHeader}>
+                <Text style={styles.dayTitle}>{day.day}</Text>
+                <View style={styles.periodCountBadge}>
+                  <Text style={styles.periodCountText}>{day.periods?.length || 0} periods</Text>
                 </View>
               </View>
-            ))}
-          </View>
+
+              {(day.periods || []).map((p, i) => (
+                <View key={`${p.subject}-${i}`} style={styles.periodCard}>
+                  <View style={styles.periodMain}>
+                    <View style={styles.periodInfo}>
+                      <Text style={styles.periodSubject}>{p.subject}</Text>
+                      <View style={styles.teacherRow}>
+                        <MaterialCommunityIcons name="account-tie-outline" size={14} color="#64748B" />
+                        <Text style={styles.periodTeacher}>{p.teacher || "Teacher"}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.timeBadge}>
+                      <MaterialCommunityIcons name="clock-outline" size={14} color="#6D28D9" />
+                      <Text style={styles.timeText}>{p.startTime} - {p.endTime}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </FadeInCard>
         ))}
       </ScrollView>
     </SafeScreen>
@@ -128,63 +175,100 @@ export default function TimetableScreen() {
 
 const styles = StyleSheet.create({
   screen: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F8F7FC",
   },
   container: {
     padding: 16,
-    paddingBottom: 28,
+    paddingBottom: 90, // bottom tab spacing
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F8F7FC",
+  },
+  loadingCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 32,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
   loadingText: {
-    marginTop: 12,
-    color: "#64748b",
-    fontWeight: "500",
-  },
-  emptyText: {
-    marginTop: 12,
-    color: "#9ca3af",
+    marginTop: 16,
+    color: "#64748B",
+    fontSize: 15,
     fontWeight: "600",
   },
-  heroCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
+  emptyCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 32,
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#E8E5EF",
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
+    width: "80%",
+  },
+  emptyText: {
+    marginTop: 16,
+    color: "#171717",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  emptySubtext: {
+    marginTop: 8,
+    color: "#64748B",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  heroCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
     marginBottom: 16,
   },
   heroHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   heroIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#eef2ff",
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#F8F7FC",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
   },
   heroTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "800",
-    color: "#1f2937",
+    color: "#171717",
   },
   heroSubtitle: {
     fontSize: 12,
-    color: "#64748b",
+    color: "#64748B",
     fontWeight: "600",
     marginTop: 2,
   },
@@ -194,88 +278,111 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    paddingVertical: 10,
+    backgroundColor: "#F8F7FC",
+    borderRadius: 16,
+    paddingVertical: 12,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#E8E5EF",
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "800",
-    color: "#1f2937",
+    color: "#171717",
   },
   statLabel: {
     marginTop: 4,
     fontSize: 11,
-    color: "#6b7280",
-    fontWeight: "600",
+    color: "#64748B",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
   },
   dayCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 16,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
-    marginBottom: 14,
+    borderColor: "#E8E5EF",
+    marginBottom: 16,
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
   },
   dayHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 14,
+    paddingHorizontal: 4,
   },
   dayTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "800",
-    color: "#1f2937",
+    color: "#171717",
   },
-  dayCount: {
+  periodCountBadge: {
+    backgroundColor: "#F8F7FC",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
+  },
+  periodCountText: {
     fontSize: 11,
-    color: "#64748b",
-    fontWeight: "600",
+    color: "#6D28D9",
+    fontWeight: "700",
   },
   periodCard: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: "#F8F7FC",
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#E8E5EF",
     marginBottom: 10,
   },
-  periodLeft: {
-    marginBottom: 8,
+  periodMain: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  periodInfo: {
+    flex: 1,
+    marginRight: 8,
   },
   periodSubject: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1f2937",
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#171717",
+  },
+  teacherRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 4,
   },
   periodTeacher: {
     fontSize: 12,
-    color: "#64748b",
+    color: "#64748B",
     fontWeight: "600",
-    marginTop: 2,
   },
   timeBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    backgroundColor: "#eef2ff",
+    gap: 4,
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
   },
   timeText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#4338ca",
+    color: "#6D28D9",
   },
 });

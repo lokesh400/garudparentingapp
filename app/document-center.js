@@ -21,12 +21,37 @@ import * as WebBrowser from "expo-web-browser";
 import SafeScreen from "../components/SafeScreen";
 import { API } from "../utils/api";
 
+// Reusable card animation wrapper for staggered waterfall entrance
+function FadeInCard({ children, delay = 0, style }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 400,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
+
+  return (
+    <Animated.View style={[{ opacity: anim, transform: [{ translateY }] }, style]}>
+      {children}
+    </Animated.View>
+  );
+}
+
 const DOCUMENT_TYPES = [
-  { key: "class10Marksheet", label: "Class 10 Marksheet", icon: "document-text" },
-  { key: "class12Marksheet", label: "Class 12 Marksheet", icon: "document-text" },
-  { key: "aadharCard", label: "Aadhaar Card", icon: "card" },
-  { key: "fatherAadharCard", label: "Father Aadhaar Card", icon: "card" },
-  { key: "motherAadharCard", label: "Mother Aadhaar Card", icon: "card" },
+  { key: "class10Marksheet", label: "Class 10 Marksheet", icon: "document-text-outline" },
+  { key: "class12Marksheet", label: "Class 12 Marksheet", icon: "document-text-outline" },
+  { key: "aadharCard", label: "Aadhaar Card", icon: "card-outline" },
+  { key: "fatherAadharCard", label: "Father Aadhaar Card", icon: "card-outline" },
+  { key: "motherAadharCard", label: "Mother Aadhaar Card", icon: "card-outline" },
 ];
 
 export default function DocumentCenter() {
@@ -51,6 +76,10 @@ export default function DocumentCenter() {
   const [toast, setToast] = useState({ visible: false, message: "" });
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-50)).current;
+
+  // Entrance Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
 
   const router = useRouter();
 
@@ -88,6 +117,18 @@ export default function DocumentCenter() {
       Alert.alert("Error", "Could not fetch document status. Please try again.");
     } finally {
       setLoading(false);
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }, [router]);
 
@@ -287,21 +328,23 @@ export default function DocumentCenter() {
   if (loading) {
     return (
       <SafeScreen style={styles.center}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.loadingText}>Fetching documents status...</Text>
+        <View style={styles.loadingCard}>
+          <ActivityIndicator size="large" color="#6D28D9" />
+          <Text style={styles.loadingText}>Fetching documents status...</Text>
+        </View>
       </SafeScreen>
     );
   }
 
   return (
     <SafeScreen style={styles.screen} edges={["top", "bottom"]}>
-      {/* Back Header */}
+      {/* Premium Back Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
         >
-          <Ionicons name="arrow-back" size={24} color="#1f2937" />
+          <Ionicons name="arrow-back" size={24} color="#171717" />
         </Pressable>
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>Document Center</Text>
@@ -309,14 +352,20 @@ export default function DocumentCenter() {
             <Text style={styles.headerSubtitle}>{studentName}</Text>
           ) : null}
         </View>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+      >
         {/* Profile Photo Section */}
         <View style={styles.photoSection}>
-          <Text style={styles.sectionHeading}>Student Profile Photo</Text>
-          <Text style={styles.sectionSub}>Update the student{"'"}s profile photo for school records</Text>
+          <View style={styles.sectionHeaderWrap}>
+            <Text style={styles.sectionHeading}>Student Profile Photo</Text>
+            <Text style={styles.sectionSub}>Used for official student registration records</Text>
+          </View>
           
           <View style={styles.avatarContainer}>
             <Pressable 
@@ -328,7 +377,7 @@ export default function DocumentCenter() {
                   <Image source={{ uri: studentPhoto }} style={styles.avatarImage} />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={54} color="#a5b4fc" />
+                    <Ionicons name="person" size={54} color="#8B5CF6" />
                   </View>
                 )}
                 <View style={styles.cameraBadge}>
@@ -341,7 +390,7 @@ export default function DocumentCenter() {
                 onPress={() => handlePreview(studentPhoto, "Profile Photo")}
                 style={({ pressed }) => [styles.viewPhotoBtn, pressed && styles.btnPressed]}
               >
-                <Ionicons name="eye" size={14} color="#6366f1" />
+                <Ionicons name="eye-outline" size={14} color="#6D28D9" />
                 <Text style={styles.viewPhotoText}>View Large</Text>
               </Pressable>
             )}
@@ -350,74 +399,78 @@ export default function DocumentCenter() {
 
         {/* Required Documents Section */}
         <View style={styles.documentsSection}>
-          <Text style={styles.sectionHeading}>Required Documents</Text>
-          <Text style={styles.sectionSub}>Please upload clear, legible copies of the documents below</Text>
+          <View style={styles.sectionHeaderWrap}>
+            <Text style={styles.sectionHeading}>Required Credentials</Text>
+            <Text style={styles.sectionSub}>Please upload clear scans or photos of student documents</Text>
+          </View>
 
-          {DOCUMENT_TYPES.map((doc) => {
+          {DOCUMENT_TYPES.map((doc, index) => {
             const documentUrl = documents[doc.key];
             const isUploaded = !!documentUrl;
 
             return (
-              <View key={doc.key} style={[styles.docCard, isUploaded && styles.docCardUploaded]}>
-                <View style={styles.docInfoRow}>
-                  <View style={[styles.docIconBg, isUploaded && styles.docIconBgUploaded]}>
-                    <Ionicons 
-                      name={doc.icon} 
-                      size={22} 
-                      color={isUploaded ? "#10b981" : "#6366f1"} 
-                    />
+              <FadeInCard key={doc.key} delay={100 + index * 60}>
+                <View style={[styles.docCard, isUploaded && styles.docCardUploaded]}>
+                  <View style={styles.docInfoRow}>
+                    <View style={[styles.docIconBg, isUploaded && styles.docIconBgUploaded]}>
+                      <Ionicons 
+                        name={doc.icon} 
+                        size={22} 
+                        color={isUploaded ? "#16A34A" : "#6D28D9"} 
+                      />
+                    </View>
+                    
+                    <View style={styles.docMeta}>
+                      <Text style={styles.docLabel}>{doc.label}</Text>
+                      {isUploaded ? (
+                        <View style={styles.uploadedBadge}>
+                          <Ionicons name="checkmark-circle" size={12} color="#16A34A" />
+                          <Text style={styles.uploadedBadgeText}>Uploaded</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.missingBadge}>
+                          <Ionicons name="alert-circle" size={12} color="#F59E0B" />
+                          <Text style={styles.missingBadgeText}>Required</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                  
-                  <View style={styles.docMeta}>
-                    <Text style={styles.docLabel}>{doc.label}</Text>
+
+                  {/* Actions Row */}
+                  <View style={styles.cardActionsRow}>
                     {isUploaded ? (
-                      <View style={styles.uploadedBadge}>
-                        <Ionicons name="checkmark-circle" size={12} color="#10b981" />
-                        <Text style={styles.uploadedBadgeText}>Uploaded</Text>
-                      </View>
+                      <>
+                        <Pressable
+                          onPress={() => handlePreview(documentUrl, doc.label)}
+                          style={({ pressed }) => [styles.actionButtonOutline, pressed && styles.btnPressed]}
+                        >
+                          <Ionicons name="eye-outline" size={16} color="#6D28D9" />
+                          <Text style={styles.actionBtnOutlineText}>Preview</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => openPickerOptions(doc.key)}
+                          style={({ pressed }) => [styles.actionButtonOutline, pressed && styles.btnPressed]}
+                        >
+                          <Ionicons name="cloud-upload-outline" size={16} color="#64748B" />
+                          <Text style={styles.actionBtnOutlineTextSecondary}>Replace</Text>
+                        </Pressable>
+                      </>
                     ) : (
-                      <View style={styles.missingBadge}>
-                        <Ionicons name="alert-circle" size={12} color="#f59e0b" />
-                        <Text style={styles.missingBadgeText}>Required</Text>
-                      </View>
+                      <Pressable
+                        onPress={() => openPickerOptions(doc.key)}
+                        style={({ pressed }) => [styles.actionButtonPrimary, pressed && styles.btnPressed]}
+                      >
+                        <Ionicons name="cloud-upload" size={16} color="#fff" />
+                        <Text style={styles.actionBtnPrimaryText}>Upload Document</Text>
+                      </Pressable>
                     )}
                   </View>
                 </View>
-
-                {/* Actions Row */}
-                <View style={styles.cardActionsRow}>
-                  {isUploaded ? (
-                    <>
-                      <Pressable
-                        onPress={() => handlePreview(documentUrl, doc.label)}
-                        style={({ pressed }) => [styles.actionButtonOutline, pressed && styles.btnPressed]}
-                      >
-                        <Ionicons name="eye-outline" size={16} color="#6366f1" />
-                        <Text style={styles.actionBtnOutlineText}>Preview</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => openPickerOptions(doc.key)}
-                        style={({ pressed }) => [styles.actionButtonOutline, pressed && styles.btnPressed]}
-                      >
-                        <Ionicons name="cloud-upload-outline" size={16} color="#475569" />
-                        <Text style={styles.actionBtnOutlineTextSecondary}>Replace</Text>
-                      </Pressable>
-                    </>
-                  ) : (
-                    <Pressable
-                      onPress={() => openPickerOptions(doc.key)}
-                      style={({ pressed }) => [styles.actionButtonPrimary, pressed && styles.btnPressed]}
-                    >
-                      <Ionicons name="cloud-upload" size={16} color="#fff" />
-                      <Text style={styles.actionBtnPrimaryText}>Upload Document</Text>
-                    </Pressable>
-                  )}
-                </View>
-              </View>
+              </FadeInCard>
             );
           })}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Floating Animated Toast Banner */}
       {toast.visible && (
@@ -443,7 +496,7 @@ export default function DocumentCenter() {
       {uploading && (
         <View style={styles.loaderOverlay}>
           <View style={styles.loaderCard}>
-            <ActivityIndicator size="large" color="#6366f1" />
+            <ActivityIndicator size="large" color="#6D28D9" />
             <Text style={styles.loaderText}>Uploading document...</Text>
             <Text style={styles.loaderSubtext}>Please do not close the app</Text>
           </View>
@@ -463,7 +516,7 @@ export default function DocumentCenter() {
             <View style={styles.sheetHeader}>
               <View style={styles.sheetBar} />
               <Text style={styles.sheetTitle}>Upload Source</Text>
-              <Text style={styles.sheetSubtitle}>Choose how you want to select the document</Text>
+              <Text style={styles.sheetSubtitle}>Select document selection method</Text>
             </View>
 
             <View style={styles.sheetButtons}>
@@ -471,18 +524,18 @@ export default function DocumentCenter() {
                 onPress={() => takePhoto(activeDocName)}
                 style={({ pressed }) => [styles.sheetButton, pressed && styles.sheetButtonPressed]}
               >
-                <View style={[styles.sheetIconBg, { backgroundColor: "#e0f2fe" }]}>
-                  <Ionicons name="camera" size={22} color="#0284c7" />
+                <View style={[styles.sheetIconBg, { backgroundColor: "#F5F3FF" }]}>
+                  <Ionicons name="camera" size={22} color="#6D28D9" />
                 </View>
-                <Text style={styles.sheetButtonText}>Take Photo with Camera</Text>
+                <Text style={styles.sheetButtonText}>Snap Photo with Camera</Text>
               </Pressable>
 
               <Pressable
                 onPress={() => pickFromGallery(activeDocName)}
                 style={({ pressed }) => [styles.sheetButton, pressed && styles.sheetButtonPressed]}
               >
-                <View style={[styles.sheetIconBg, { backgroundColor: "#eef2ff" }]}>
-                  <Ionicons name="image" size={22} color="#6366f1" />
+                <View style={[styles.sheetIconBg, { backgroundColor: "#F5F3FF" }]}>
+                  <Ionicons name="image" size={22} color="#8B5CF6" />
                 </View>
                 <Text style={styles.sheetButtonText}>Choose from Gallery</Text>
               </Pressable>
@@ -491,10 +544,10 @@ export default function DocumentCenter() {
                 onPress={() => pickDocument(activeDocName)}
                 style={({ pressed }) => [styles.sheetButton, pressed && styles.sheetButtonPressed]}
               >
-                <View style={[styles.sheetIconBg, { backgroundColor: "#f0fdf4" }]}>
-                  <Ionicons name="document" size={22} color="#16a34a" />
+                <View style={[styles.sheetIconBg, { backgroundColor: "#F5F3FF" }]}>
+                  <Ionicons name="document-text" size={22} color="#A855F7" />
                 </View>
-                <Text style={styles.sheetButtonText}>Select PDF / Files</Text>
+                <Text style={styles.sheetButtonText}>Select PDF / General Files</Text>
               </Pressable>
 
               <Pressable
@@ -560,17 +613,30 @@ export default function DocumentCenter() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#F8F7FC",
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#F8F7FC",
+  },
+  loadingCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 32,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
   loadingText: {
     marginTop: 14,
-    color: "#64748b",
+    color: "#64748B",
     fontWeight: "600",
   },
   header: {
@@ -581,18 +647,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    borderBottomColor: "#E8E5EF",
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#f1f5f9",
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#F8F7FC",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
   },
   backButtonPressed: {
     opacity: 0.7,
+    transform: [{ scale: 0.95 }],
   },
   headerTitleWrap: {
     flex: 1,
@@ -601,11 +670,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#1f2937",
+    color: "#171717",
   },
   headerSubtitle: {
     fontSize: 11,
-    color: "#6366f1",
+    color: "#6D28D9",
     fontWeight: "700",
     marginTop: 2,
   },
@@ -615,31 +684,32 @@ const styles = StyleSheet.create({
   },
   photoSection: {
     backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 24,
+    padding: 20,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#E8E5EF",
     marginBottom: 20,
     alignItems: "center",
     elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  sectionHeaderWrap: {
+    alignSelf: "flex-start",
+    marginBottom: 16,
   },
   sectionHeading: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "800",
-    color: "#1f2937",
-    marginBottom: 4,
-    alignSelf: "flex-start",
+    color: "#171717",
   },
   sectionSub: {
     fontSize: 12,
-    color: "#64748b",
+    color: "#64748B",
     fontWeight: "500",
-    marginBottom: 16,
-    alignSelf: "flex-start",
+    marginTop: 2,
   },
   avatarContainer: {
     alignItems: "center",
@@ -656,10 +726,10 @@ const styles = StyleSheet.create({
     height: 110,
     borderRadius: 55,
     borderWidth: 3,
-    borderColor: "#e0e7ff",
+    borderColor: "#F5F3FF",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f5f7ff",
+    backgroundColor: "#F8F7FC",
     position: "relative",
   },
   avatarImage: {
@@ -675,10 +745,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 2,
     right: 2,
-    backgroundColor: "#6366f1",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    backgroundColor: "#6D28D9",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2.5,
@@ -687,98 +757,105 @@ const styles = StyleSheet.create({
   viewPhotoBtn: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: "#eef2ff",
+    marginTop: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#F5F3FF",
     borderWidth: 1,
-    borderColor: "#c7d2fe",
+    borderColor: "#E8E5EF",
   },
   viewPhotoText: {
     fontSize: 12,
-    color: "#6366f1",
+    color: "#6D28D9",
     fontWeight: "700",
     marginLeft: 6,
   },
   documentsSection: {
     backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 24,
+    padding: 20,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#E8E5EF",
     elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   docCard: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: "#F8F7FC",
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#E8E5EF",
     marginBottom: 12,
   },
   docCardUploaded: {
     backgroundColor: "#ffffff",
-    borderColor: "#d1fae5",
+    borderColor: "#DCFCE7",
     borderWidth: 1.5,
   },
   docInfoRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   docIconBg: {
     width: 44,
     height: 44,
-    borderRadius: 10,
-    backgroundColor: "#eef2ff",
+    borderRadius: 14,
+    backgroundColor: "#F5F3FF",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
   },
   docIconBgUploaded: {
-    backgroundColor: "#ecfdf5",
+    backgroundColor: "#F0FDF4",
+    borderColor: "#DCFCE7",
   },
   docMeta: {
     marginLeft: 12,
     flex: 1,
   },
   docLabel: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1f2937",
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#171717",
     marginBottom: 4,
   },
   uploadedBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#d1fae5",
+    backgroundColor: "#F0FDF4",
+    borderColor: "#DCFCE7",
+    borderWidth: 1,
     alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   uploadedBadgeText: {
     fontSize: 10,
-    color: "#065f46",
+    color: "#16A34A",
     fontWeight: "700",
     marginLeft: 4,
   },
   missingBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fef3c7",
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FEF3C7",
+    borderWidth: 1,
     alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   missingBadgeText: {
     fontSize: 10,
-    color: "#92400e",
+    color: "#D97706",
     fontWeight: "700",
     marginLeft: 4,
   },
@@ -791,22 +868,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 9,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#E8E5EF",
     backgroundColor: "#ffffff",
   },
   actionBtnOutlineText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#6366f1",
+    color: "#6D28D9",
     marginLeft: 6,
   },
   actionBtnOutlineTextSecondary: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#475569",
+    color: "#64748B",
     marginLeft: 6,
   },
   actionButtonPrimary: {
@@ -814,11 +891,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: "#6366f1",
-    elevation: 1,
-    shadowColor: "#6366f1",
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#6D28D9",
+    elevation: 2,
+    shadowColor: "#6D28D9",
     shadowOpacity: 0.15,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -831,10 +908,11 @@ const styles = StyleSheet.create({
   },
   btnPressed: {
     opacity: 0.8,
+    transform: [{ scale: 0.98 }],
   },
   loaderOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    backgroundColor: "rgba(23, 23, 23, 0.45)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
@@ -842,27 +920,30 @@ const styles = StyleSheet.create({
   loaderCard: {
     backgroundColor: "#ffffff",
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 24,
     alignItems: "center",
     minWidth: 220,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#E8E5EF",
+    shadowColor: "#6D28D9",
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
   },
   loaderText: {
     marginTop: 14,
     fontSize: 14,
-    fontWeight: "700",
-    color: "#1f2937",
+    fontWeight: "800",
+    color: "#171717",
   },
   loaderSubtext: {
     marginTop: 6,
     fontSize: 11,
-    color: "#64748b",
+    color: "#64748B",
     fontWeight: "500",
   },
   toastWrapper: {
     position: "absolute",
-    top: 40,
+    top: 50,
     left: 16,
     right: 16,
     zIndex: 9999,
@@ -870,12 +951,12 @@ const styles = StyleSheet.create({
   toastContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#10b981",
+    backgroundColor: "#16A34A",
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 10,
-    shadowColor: "#10b981",
-    shadowOpacity: 0.2,
+    borderRadius: 16,
+    shadowColor: "#16A34A",
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
@@ -888,7 +969,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    backgroundColor: "rgba(23, 23, 23, 0.4)",
     justifyContent: "flex-end",
   },
   dismissBackdrop: {
@@ -896,10 +977,14 @@ const styles = StyleSheet.create({
   },
   modalSheet: {
     backgroundColor: "#ffffff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 36 : 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
   sheetHeader: {
     alignItems: "center",
@@ -908,18 +993,18 @@ const styles = StyleSheet.create({
   sheetBar: {
     width: 40,
     height: 4,
-    backgroundColor: "#e2e8f0",
+    backgroundColor: "#E8E5EF",
     borderRadius: 2,
     marginBottom: 12,
   },
   sheetTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#1f2937",
+    color: "#171717",
   },
   sheetSubtitle: {
-    fontSize: 11,
-    color: "#64748b",
+    fontSize: 12,
+    color: "#64748B",
     fontWeight: "500",
     marginTop: 2,
   },
@@ -929,41 +1014,45 @@ const styles = StyleSheet.create({
   sheetButton: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
+    padding: 14,
+    backgroundColor: "#F8F7FC",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#E8E5EF",
   },
   sheetButtonPressed: {
-    backgroundColor: "#f1f5f9",
-    opacity: 0.9,
+    backgroundColor: "#F5F3FF",
+    opacity: 0.95,
   },
   sheetIconBg: {
     width: 38,
     height: 38,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
   },
   sheetButtonText: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#334155",
+    fontWeight: "800",
+    color: "#171717",
   },
   sheetCancelButton: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: "#f1f5f9",
+    borderRadius: 16,
+    backgroundColor: "#F8F7FC",
     marginTop: 4,
+    borderWidth: 1,
+    borderColor: "#E8E5EF",
   },
   sheetCancelButtonText: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#475569",
+    fontWeight: "800",
+    color: "#64748B",
   },
   previewBackdrop: {
     flex: 1,
@@ -993,9 +1082,9 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   previewCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "rgba(255, 255, 255, 0.15)",
     alignItems: "center",
     justifyContent: "center",

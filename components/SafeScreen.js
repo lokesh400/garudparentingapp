@@ -7,9 +7,7 @@ export default function SafeScreen({ children, style, edges = ["bottom"] }) {
       edges={edges}
       style={[{ flex: 1, backgroundColor: "#ffffff" }, style]}
     >
-      <View style={{ flex: 1 }}>
-        {children}
-      </View>
+      {children}
     </SafeAreaView>
   );
 }
