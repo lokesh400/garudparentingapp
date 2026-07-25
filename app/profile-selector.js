@@ -102,9 +102,10 @@ export default function ProfileSelector() {
       }
     } catch (e) {
       console.log("Switch profile error:", e);
+      const errMsg = e.response?.data?.message || "Saved credentials may be invalid. You can delete the profile and login again.";
       Alert.alert(
         "Could not switch profile",
-        "Saved credentials may be invalid. You can delete the profile and login again."
+        errMsg
       );
     } finally {
       setLoadingId(null);

@@ -1,8 +1,7 @@
 import { Redirect } from "expo-router";
 import { useEffect, useState, useRef } from "react";
-import { View, ActivityIndicator, StyleSheet, Text, Animated } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Text, Animated, Image } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { API } from "../utils/api";
 
 export default function Index() {
@@ -50,7 +49,11 @@ export default function Index() {
       <View style={styles.container}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <View style={styles.logoBg}>
-            <MaterialCommunityIcons name="feather" size={44} color="#6D28D9" />
+            <Image
+              source={require("../assets/images/logo.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.brandTitle}>GARUD</Text>
           <Text style={styles.brandSubtitle}>CLASSES</Text>
@@ -92,6 +95,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
     marginBottom: 20,
+  },
+  logoImage: {
+    width: 60,
+    height: 60,
   },
   brandTitle: {
     fontSize: 24,

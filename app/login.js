@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
   Animated,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import SafeScreen from "../components/SafeScreen";
@@ -151,12 +152,13 @@ export default function Login() {
 
         router.replace("/(tabs)/dashboard");
       } else {
-        alert("Login failed");
+        Alert.alert("Login Failed", "Unable to login. Please try again.");
         setIsLoggingIn(false);
       }
     } catch (err) {
       console.log("LOGIN ERROR:", err);
-      alert("Invalid credentials");
+      const errMsg = err.response?.data?.message || "Invalid credentials";
+      Alert.alert("Login Failed", errMsg);
       setIsLoggingIn(false);
     }
   };
